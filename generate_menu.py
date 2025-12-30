@@ -6,7 +6,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Frame, PageTemplate
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 # 1. 字体配置 Font Configuration
@@ -43,31 +43,19 @@ def parse_menu(filepath):
         
         # 简单的关键字提取
         recipe_pattern = re.compile(r'\*\s*\*\*配方\*\*[：:]\s*(.+)')
-        method_pattern = re.compile(r'\*\s*\*\*做法\*\*[：:]\s*(.+)')
-        garnish_pattern = re.compile(r'\*\s*\*\*点睛\*\*[：:]\s*(.+)')
         
         recipe = ""
-        method = ""
-        garnish = ""
         
         for line in lines[1:]:
             line = line.strip()
             r_match = recipe_pattern.match(line)
-            m_match = method_pattern.match(line)
-            g_match = garnish_pattern.match(line)
             
             if r_match:
                 recipe = r_match.group(1)
-            elif m_match:
-                method = m_match.group(1)
-            elif g_match:
-                garnish = g_match.group(1)
                 
         drinks.append({
             'title': title,
-            'recipe': recipe,
-            'method': method,
-            'garnish': garnish
+            'recipe': recipe
         })
         
     return drinks
@@ -93,26 +81,27 @@ def generate_pdf(drinks, filename):
 
     styles = getSampleStyleSheet()
     
-    # 标题样式
+    # 标题样式 - 调整字体大小和间距以适应单页 6 个
     title_style = ParagraphStyle(
         'DrinkTitle',
         parent=styles['Heading2'],
         fontName=title_font,
-        fontSize=14,
-        leading=20,
-        spaceAfter=10,
+        fontSize=16, # 稍微加大
+        leading=22,
+        spaceAfter=6,
         textColor=colors.HexColor('#2c3e50'),
         alignment=TA_CENTER
     )
     
-    # 正文样式
+    # 正文样式 - 居中
     text_style = ParagraphStyle(
         'Content',
         parent=styles['BodyText'],
         fontName=body_font,
-        fontSize=10,
-        leading=16,
-        textColor=colors.black
+        fontSize=12, # 稍微加大
+        leading=18,
+        textColor=colors.HexColor('#555555'),
+        alignment=TA_CENTER
     )
 
     story = []
@@ -124,22 +113,21 @@ def generate_pdf(drinks, filename):
         fontName=title_font, 
         fontSize=28, 
         spaceAfter=10,
+        alignment=TA_CENTER,
         textColor=colors.HexColor('#34495e')
     )))
-    story.append(Spacer(1, 10))
     story.append(Paragraph("精选酒单", ParagraphStyle(
         'SubTitle', 
         parent=styles['Normal'], 
         fontName=title_font, 
         fontSize=14, 
         alignment=TA_CENTER,
-        spaceAfter=30,
+        spaceAfter=20,
         textColor=colors.HexColor('#7f8c8d')
     )))
 
-    # 构建表格数据
+    # 构建表格数据 - 单列
     data = []
-    row = []
     
     for i, drink in enumerate(drinks):
         card_content = []
@@ -147,66 +135,41 @@ def generate_pdf(drinks, filename):
         # 1. Title
         card_content.append(Paragraph(drink['title'], title_style))
         
-        # 2. Separator Line (using a Table within the cell or just spacing)
-        # Using a Paragraph with a border is hard, let's just use space.
-        card_content.append(Spacer(1, 6))
+        # 2. Separator Line
+        card_content.append(Spacer(1, 4))
         
-        # 3. Details
-        # We construct a string with HTML tags for colors/bold
-        # Note: ReportLab's HTML parser is simple.
-        
+        # 3. Details - 只显示配方
         if drink['recipe']:
-            # SimHei doesn't have a bold variant usually, but reportlab might synthesize or we just use color
-            p = Paragraph(f"<font color='#8e44ad'><b>配方</b></font> | {drink['recipe']}", text_style)
+            # 不再使用 colored label，直接居中显示内容，更简约
+            p = Paragraph(f"{drink['recipe']}", text_style)
             card_content.append(p)
             
-        if drink['method']:
-            p = Paragraph(f"<font color='#2980b9'><b>做法</b></font> | {drink['method']}", text_style)
-            card_content.append(p)
-            
-        if drink['garnish']:
-            p = Paragraph(f"<font color='#27ae60'><b>点睛</b></font> | {drink['garnish']}", text_style)
-            card_content.append(p)
-            
-        # Add some padding at bottom of content inside the cell
+        # 增加单元格内的底部间距
         card_content.append(Spacer(1, 10))
         
-        row.append(card_content)
-        
-        if len(row) == 2:
-            data.append(row)
-            row = []
-            
-    if row:
-        row.append([]) # Empty cell placeholder
-        data.append(row)
+        # 直接添加一行（包含一个单元格）
+        data.append([card_content])
 
     # Calculation for card size
     page_width = A4[0] - 3*cm
-    col_width = page_width / 2 - 0.5*cm # Leave some gap
+    col_width = page_width 
     
     # Outer Table Style
-    t = Table(data, colWidths=[col_width, col_width], spaceBefore=0, spaceAfter=0)
+    t = Table(data, colWidths=[col_width], spaceBefore=0, spaceAfter=0)
     
-    # Table Styling for "Card" look
-    # (col, row)
+    # Table Styling
     style_cmds = [
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('LEFTPADDING', (0,0), (-1,-1), 12),
-        ('RIGHTPADDING', (0,0), (-1,-1), 12),
-        ('TOPPADDING', (0,0), (-1,-1), 12),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), # 垂直居中
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),  # 水平居中
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 15), # 增加行间距
+        ('BOTTOMPADDING', (0,0), (-1,-1), 15),
     ]
     
-    # Apply borders to each cell individually to make them look like cards
-    # Or just a grid.
-    # Let's do a grid with some spacing.
-    # Actually, to make them look like cards separated by space, we can't easily use a single Table with borders unless we use spacing.
-    # ReportLab Tables can have 'cellStyles' but standard grids are continuous.
-    # We will use a simple inner grid line for minimalism.
-    
-    style_cmds.append(('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#ecf0f1'))) # Light grey grid
-    style_cmds.append(('BACKGROUND', (0,0), (-1,-1), colors.white))
+    # 分割线：只在行与行之间画线
+    # 我们可以使用 LINEBELOW
+    style_cmds.append(('LINEBELOW', (0,0), (-1,-2), 0.5, colors.HexColor('#ecf0f1'))) # 除最后一行外的下划线
 
     t.setStyle(TableStyle(style_cmds))
     
