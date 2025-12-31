@@ -27,6 +27,12 @@ wheels/
 example*.xlsx
 result.xlsx
 
+# PyInstaller打包文件
+build/
+dist/
+*.spec
+*.pyc
+
 # IDE
 .vscode/
 .idea/

@@ -22,8 +22,11 @@ class ExcelMergerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("📊 Excel表格合并工具")
-        self.root.geometry("800x600")
+        self.root.geometry("1000x750")
         self.root.resizable(True, True)
+        
+        # 设置最小窗口大小
+        self.root.minsize(800, 600)
         
         # 设置样式
         style = ttk.Style()
@@ -39,18 +42,27 @@ class ExcelMergerGUI:
         """创建GUI组件"""
         
         # 标题框架
-        title_frame = tk.Frame(self.root, bg="#2c3e50", height=60)
+        title_frame = tk.Frame(self.root, bg="#2c3e50", height=80)
         title_frame.pack(fill=tk.X, padx=0, pady=0)
         title_frame.pack_propagate(False)
         
         title_label = tk.Label(
             title_frame,
             text="📊 Excel表格合并工具",
-            font=("Arial", 20, "bold"),
+            font=("Arial", 24, "bold"),
             fg="white",
             bg="#2c3e50"
         )
-        title_label.pack(pady=15)
+        title_label.pack(pady=20)
+        
+        subtitle_label = tk.Label(
+            title_frame,
+            text="合并相同表头的Excel文件，自动重新编号",
+            font=("Arial", 11),
+            fg="#ecf0f1",
+            bg="#2c3e50"
+        )
+        subtitle_label.pack(pady=(0, 10))
         
         # 主容器
         main_frame = tk.Frame(self.root, padx=20, pady=20)
@@ -60,11 +72,11 @@ class ExcelMergerGUI:
         file_frame = tk.LabelFrame(
             main_frame,
             text="📁 选择要合并的Excel文件",
-            font=("Arial", 11, "bold"),
-            padx=10,
-            pady=10
+            font=("Arial", 12, "bold"),
+            padx=15,
+            pady=15
         )
-        file_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        file_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
         
         # 按钮框架
         button_frame = tk.Frame(file_frame)
@@ -77,9 +89,9 @@ class ExcelMergerGUI:
             command=self.select_files,
             bg="#3498db",
             fg="white",
-            font=("Arial", 10, "bold"),
-            padx=20,
-            pady=8,
+            font=("Arial", 11, "bold"),
+            padx=25,
+            pady=10,
             cursor="hand2",
             relief=tk.FLAT
         )
@@ -92,9 +104,9 @@ class ExcelMergerGUI:
             command=self.clear_files,
             bg="#e74c3c",
             fg="white",
-            font=("Arial", 10, "bold"),
-            padx=20,
-            pady=8,
+            font=("Arial", 11, "bold"),
+            padx=25,
+            pady=10,
             cursor="hand2",
             relief=tk.FLAT
         )
@@ -104,8 +116,8 @@ class ExcelMergerGUI:
         self.file_count_label = tk.Label(
             button_frame,
             text="已选择: 0 个文件",
-            font=("Arial", 10),
-            fg="#7f8c8d"
+            font=("Arial", 11, "bold"),
+            fg="#2c3e50"
         )
         self.file_count_label.pack(side=tk.RIGHT)
         
@@ -121,10 +133,11 @@ class ExcelMergerGUI:
         self.file_listbox = tk.Listbox(
             list_frame,
             yscrollcommand=scrollbar.set,
-            font=("Consolas", 9),
+            font=("Consolas", 10),
             selectmode=tk.EXTENDED,
             bg="#ecf0f1",
-            relief=tk.FLAT
+            relief=tk.FLAT,
+            height=12
         )
         self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.file_listbox.yview)
@@ -133,23 +146,23 @@ class ExcelMergerGUI:
         output_frame = tk.LabelFrame(
             main_frame,
             text="💾 输出设置",
-            font=("Arial", 11, "bold"),
-            padx=10,
-            pady=10
+            font=("Arial", 12, "bold"),
+            padx=15,
+            pady=15
         )
-        output_frame.pack(fill=tk.X, pady=(0, 10))
+        output_frame.pack(fill=tk.X, pady=(0, 15))
         
         # 输出文件名
         output_label = tk.Label(
             output_frame,
             text="输出文件名:",
-            font=("Arial", 10)
+            font=("Arial", 11)
         )
         output_label.pack(side=tk.LEFT, padx=(0, 10))
         
         self.output_entry = tk.Entry(
             output_frame,
-            font=("Arial", 10),
+            font=("Arial", 11),
             width=40
         )
         self.output_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
@@ -162,9 +175,9 @@ class ExcelMergerGUI:
             command=self.browse_output,
             bg="#95a5a6",
             fg="white",
-            font=("Arial", 9, "bold"),
-            padx=15,
-            pady=5,
+            font=("Arial", 10, "bold"),
+            padx=20,
+            pady=8,
             cursor="hand2",
             relief=tk.FLAT
         )
@@ -174,16 +187,16 @@ class ExcelMergerGUI:
         log_frame = tk.LabelFrame(
             main_frame,
             text="📋 操作日志",
-            font=("Arial", 11, "bold"),
-            padx=10,
-            pady=10
+            font=("Arial", 12, "bold"),
+            padx=15,
+            pady=15
         )
-        log_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        log_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
         
         self.log_text = scrolledtext.ScrolledText(
             log_frame,
-            height=8,
-            font=("Consolas", 9),
+            height=10,
+            font=("Consolas", 10),
             bg="#2c3e50",
             fg="#ecf0f1",
             relief=tk.FLAT,
@@ -198,9 +211,9 @@ class ExcelMergerGUI:
             command=self.start_merge,
             bg="#27ae60",
             fg="white",
-            font=("Arial", 12, "bold"),
-            padx=30,
-            pady=12,
+            font=("Arial", 14, "bold"),
+            padx=40,
+            pady=15,
             cursor="hand2",
             relief=tk.FLAT
         )

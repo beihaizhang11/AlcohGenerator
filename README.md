@@ -110,6 +110,39 @@ python excel_merger.py result.xlsx example1.xlsx example2.xlsx example3.xlsx
 python excel_merger_gui.py
 ```
 
+## 打包成EXE文件 📦
+
+如果想将GUI程序打包成独立的Windows可执行文件（.exe），无需Python环境即可运行：
+
+### 快速打包
+
+**Windows用户：**
+```bash
+# 双击运行
+打包成EXE.bat
+
+# 或使用命令行
+python build_exe.py
+```
+
+**Linux/Mac用户：**
+```bash
+./打包成EXE.sh
+```
+
+### 打包说明
+
+- **输出位置**：`dist/Excel表格合并工具.exe`
+- **文件大小**：约50-100MB（包含所有依赖）
+- **打包模式**：单文件模式（所有依赖打包到一个exe中）
+- **无需安装**：可直接运行，不需要Python环境
+- **可分发**：可将dist目录整体分发给其他用户
+
+### 打包要求
+
+- 需要安装 PyInstaller：`pip install pyinstaller`
+- 打包脚本会自动检查并提示安装
+
 ## 工作原理
 
 1. **加载文件** - 读取所有指定的Excel文件
