@@ -50,9 +50,10 @@ def get_desktop_path():
 
 
 def generate_output_filename():
-    """生成输出文件名：账单汇总_YYYYMMDD HH:MM:SS.xlsx"""
+    """生成输出文件名：账单汇总_YYYYMMDD HH-MM-SS.xlsx"""
     now = datetime.now()
-    filename = now.strftime("账单汇总_%Y%m%d %H:%M:%S.xlsx")
+    # Windows不允许文件名包含冒号，使用横杠代替
+    filename = now.strftime("账单汇总_%Y%m%d %H-%M-%S.xlsx")
     return filename
 
 
