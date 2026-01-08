@@ -26,6 +26,13 @@ if [ $? -ne 0 ]; then
     fi
 fi
 
+# 检查并安装拖拽支持库
+python3 -c "import tkinterdnd2" 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "⚠️  安装拖拽支持库..."
+    pip install -q tkinterdnd2 2>/dev/null
+fi
+
 echo "✓ 依赖检查完成"
 echo ""
 echo "📊 启动应用程序..."
