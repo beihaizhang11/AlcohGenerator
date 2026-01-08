@@ -5,6 +5,8 @@ Excel表格合并工具 - 图形界面版本
 功能：
 1. 合并多个具有相同表头的Excel文件
 2. 自动重新生成第一列的递增序号（从1开始）
+3. 支持拖拽文件到窗口
+4. 自动输出到桌面，文件名格式：账单汇总_YYYYMMDD HH:MM:SS.xlsx
 """
 
 import os
@@ -14,6 +16,44 @@ from tkinter import ttk
 import pandas as pd
 from pathlib import Path
 import threading
+from datetime import datetime
+
+# 尝试导入拖拽支持库
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    HAS_DND = True
+except ImportError:
+    HAS_DND = False
+
+
+def get_desktop_path():
+    """获取桌面路径"""
+    # 尝试多种方式获取桌面路径
+    # Windows
+    if os.name == 'nt':
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        if not os.path.exists(desktop):
+            # 尝试中文路径
+            desktop = os.path.join(os.path.expanduser("~"), "桌面")
+        if not os.path.exists(desktop):
+            # 使用用户目录
+            desktop = os.path.expanduser("~")
+    else:
+        # Linux/Mac
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        if not os.path.exists(desktop):
+            desktop = os.path.join(os.path.expanduser("~"), "桌面")
+        if not os.path.exists(desktop):
+            desktop = os.path.expanduser("~")
+    
+    return desktop
+
+
+def generate_output_filename():
+    """生成输出文件名：账单汇总_YYYYMMDD HH:MM:SS.xlsx"""
+    now = datetime.now()
+    filename = now.strftime("账单汇总_%Y%m%d %H:%M:%S.xlsx")
+    return filename
 
 
 class ExcelMergerGUI:
@@ -22,11 +62,11 @@ class ExcelMergerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("📊 Excel表格合并工具")
-        self.root.geometry("1000x750")
+        self.root.geometry("1000x700")
         self.root.resizable(True, True)
         
         # 设置最小窗口大小
-        self.root.minsize(800, 600)
+        self.root.minsize(800, 550)
         
         # 设置样式
         style = ttk.Style()
@@ -37,6 +77,9 @@ class ExcelMergerGUI:
         
         # 创建界面
         self.create_widgets()
+        
+        # 设置拖拽支持
+        self.setup_drag_and_drop()
         
     def create_widgets(self):
         """创建GUI组件"""
@@ -57,7 +100,7 @@ class ExcelMergerGUI:
         
         subtitle_label = tk.Label(
             title_frame,
-            text="合并相同表头的Excel文件，自动重新编号",
+            text="合并相同表头的Excel文件，自动重新编号 | 输出到桌面",
             font=("Arial", 11),
             fg="#ecf0f1",
             bg="#2c3e50"
@@ -71,7 +114,7 @@ class ExcelMergerGUI:
         # 文件选择区域
         file_frame = tk.LabelFrame(
             main_frame,
-            text="📁 选择要合并的Excel文件",
+            text="📁 选择要合并的Excel文件（支持拖拽文件到此处）",
             font=("Arial", 12, "bold"),
             padx=15,
             pady=15
@@ -121,6 +164,20 @@ class ExcelMergerGUI:
         )
         self.file_count_label.pack(side=tk.RIGHT)
         
+        # 拖拽提示区域
+        self.drop_hint_frame = tk.Frame(file_frame, bg="#ecf0f1", height=60)
+        self.drop_hint_frame.pack(fill=tk.X, pady=(0, 10))
+        self.drop_hint_frame.pack_propagate(False)
+        
+        drop_hint_label = tk.Label(
+            self.drop_hint_frame,
+            text="🎯 拖拽Excel文件到此窗口即可添加",
+            font=("Arial", 12),
+            fg="#7f8c8d",
+            bg="#ecf0f1"
+        )
+        drop_hint_label.pack(expand=True)
+        
         # 文件列表框
         list_frame = tk.Frame(file_frame)
         list_frame.pack(fill=tk.BOTH, expand=True)
@@ -137,51 +194,10 @@ class ExcelMergerGUI:
             selectmode=tk.EXTENDED,
             bg="#ecf0f1",
             relief=tk.FLAT,
-            height=12
+            height=10
         )
         self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.file_listbox.yview)
-        
-        # 输出设置区域
-        output_frame = tk.LabelFrame(
-            main_frame,
-            text="💾 输出设置",
-            font=("Arial", 12, "bold"),
-            padx=15,
-            pady=15
-        )
-        output_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        # 输出文件名
-        output_label = tk.Label(
-            output_frame,
-            text="输出文件名:",
-            font=("Arial", 11)
-        )
-        output_label.pack(side=tk.LEFT, padx=(0, 10))
-        
-        self.output_entry = tk.Entry(
-            output_frame,
-            font=("Arial", 11),
-            width=40
-        )
-        self.output_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-        self.output_entry.insert(0, "merged_result.xlsx")
-        
-        # 浏览按钮
-        browse_btn = tk.Button(
-            output_frame,
-            text="📂 浏览",
-            command=self.browse_output,
-            bg="#95a5a6",
-            fg="white",
-            font=("Arial", 10, "bold"),
-            padx=20,
-            pady=8,
-            cursor="hand2",
-            relief=tk.FLAT
-        )
-        browse_btn.pack(side=tk.LEFT)
         
         # 日志区域
         log_frame = tk.LabelFrame(
@@ -195,7 +211,7 @@ class ExcelMergerGUI:
         
         self.log_text = scrolledtext.ScrolledText(
             log_frame,
-            height=10,
+            height=8,
             font=("Consolas", 10),
             bg="#2c3e50",
             fg="#ecf0f1",
@@ -207,7 +223,7 @@ class ExcelMergerGUI:
         # 合并按钮
         merge_btn = tk.Button(
             main_frame,
-            text="✨ 开始合并",
+            text="✨ 开始合并（自动保存到桌面）",
             command=self.start_merge,
             bg="#27ae60",
             fg="white",
@@ -221,7 +237,77 @@ class ExcelMergerGUI:
         
         # 初始日志
         self.log("欢迎使用Excel表格合并工具！")
-        self.log("请选择要合并的Excel文件...")
+        self.log("请选择或拖拽Excel文件到窗口...")
+        self.log(f"合并后的文件将自动保存到桌面")
+        
+    def setup_drag_and_drop(self):
+        """设置拖拽支持"""
+        if HAS_DND:
+            try:
+                # 为整个窗口注册拖拽
+                self.root.drop_target_register(DND_FILES)
+                self.root.dnd_bind('<<Drop>>', self.handle_drop)
+                self.log("✓ 拖拽功能已启用")
+            except Exception as e:
+                self.log(f"⚠️ 拖拽功能初始化失败: {str(e)}")
+        else:
+            self.log("⚠️ 拖拽功能不可用（需要安装 tkinterdnd2）")
+            
+    def handle_drop(self, event):
+        """处理拖拽放置事件"""
+        # 解析拖拽的文件路径
+        files = self.parse_drop_data(event.data)
+        
+        added_count = 0
+        for file_path in files:
+            # 只接受Excel文件
+            if file_path.lower().endswith(('.xlsx', '.xls')):
+                if file_path not in self.selected_files:
+                    self.selected_files.append(file_path)
+                    self.file_listbox.insert(tk.END, os.path.basename(file_path))
+                    added_count += 1
+        
+        if added_count > 0:
+            self.update_file_count()
+            self.log(f"✓ 通过拖拽添加了 {added_count} 个文件")
+        else:
+            self.log("⚠️ 没有有效的Excel文件被添加")
+    
+    def parse_drop_data(self, data):
+        """解析拖拽数据，提取文件路径"""
+        files = []
+        # 处理不同操作系统的路径格式
+        # Windows: {path1} {path2} 或 path1\npath2
+        # Linux: file://path1\nfile://path2
+        
+        if '{' in data:
+            # Windows格式，花括号包围的路径
+            import re
+            matches = re.findall(r'\{([^}]+)\}', data)
+            if matches:
+                files.extend(matches)
+            else:
+                # 没有花括号，按空格分割
+                files.extend(data.split())
+        else:
+            # 按换行或空格分割
+            items = data.replace('\r', '').split('\n')
+            for item in items:
+                item = item.strip()
+                if item:
+                    # 移除 file:// 前缀
+                    if item.startswith('file://'):
+                        item = item[7:]
+                    files.append(item)
+        
+        # 清理路径
+        cleaned_files = []
+        for f in files:
+            f = f.strip()
+            if f and os.path.isfile(f):
+                cleaned_files.append(f)
+        
+        return cleaned_files
         
     def log(self, message):
         """在日志区域添加消息"""
@@ -264,29 +350,17 @@ class ExcelMergerGUI:
         count = len(self.selected_files)
         self.file_count_label.config(text=f"已选择: {count} 个文件")
         
-    def browse_output(self):
-        """浏览输出位置"""
-        file_path = filedialog.asksaveasfilename(
-            title="选择输出位置",
-            defaultextension=".xlsx",
-            filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")]
-        )
-        
-        if file_path:
-            self.output_entry.delete(0, tk.END)
-            self.output_entry.insert(0, file_path)
-            
     def start_merge(self):
         """开始合并（在新线程中执行）"""
         # 验证输入
         if not self.selected_files:
             messagebox.showwarning("提示", "请先选择要合并的Excel文件！")
             return
-            
-        output_file = self.output_entry.get().strip()
-        if not output_file:
-            messagebox.showwarning("提示", "请输入输出文件名！")
-            return
+        
+        # 自动生成输出文件路径（桌面 + 时间戳文件名）
+        desktop_path = get_desktop_path()
+        output_filename = generate_output_filename()
+        output_file = os.path.join(desktop_path, output_filename)
         
         # 在新线程中执行合并
         thread = threading.Thread(target=self.merge_files, args=(output_file,))
@@ -385,7 +459,13 @@ class ExcelMergerGUI:
 
 def main():
     """主函数"""
-    root = tk.Tk()
+    if HAS_DND:
+        # 使用支持拖拽的TkinterDnD
+        root = TkinterDnD.Tk()
+    else:
+        # 使用普通的Tk
+        root = tk.Tk()
+    
     app = ExcelMergerGUI(root)
     root.mainloop()
 

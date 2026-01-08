@@ -18,6 +18,12 @@ if errorlevel 1 (
     pip install -q pandas openpyxl
 )
 
+python -c "import tkinterdnd2" >nul 2>&1
+if errorlevel 1 (
+    echo ⚠️  安装拖拽支持库...
+    pip install -q tkinterdnd2
+)
+
 echo ✓ 依赖检查完成
 echo.
 echo 📊 启动应用程序...
